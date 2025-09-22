@@ -4,28 +4,33 @@ networks:
   default:
     driver: bridge
 
-volumes:
-  neo4j_data:
-  neo4j_logs:
-  manager_db:
+# Using host-mounted directories instead of Docker volumes  
+# volumes:
+#   neo4j_data:
+#   neo4j_logs:
+#   manager_db:
 
 services:
   # Neo4j Database
   neo4j:
-    image: neo4j:2025.06.2
+    image: neo4j:5.26.0
     container_name: graphiti-neo4j
     ports:
       - '7474:7474' # HTTP
       - '7687:7687' # Bolt
     environment:
-      - TZ=${TZ:-UTC}
-      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-graphiti}
+      - TZ=${TZ:-Asia/Shanghai}
+      - NEO4J_AUTH=${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-graphiti123}
       - NEO4J_server_memory_heap_initial__size=512m
       - NEO4J_server_memory_heap_max__size=1G
       - NEO4J_server_memory_pagecache_size=512m
     volumes:
-      - neo4j_data:/data
-      - neo4j_logs:/logs
+      - /mnt/docker/neo4j/data:/data
+      - /mnt/docker/neo4j/logs:/logs
+      - /mnt/docker/neo4j/conf:/var/lib/neo4j/conf
+      - /mnt/docker/neo4j/plugins:/plugins
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
     healthcheck:
       test: ['CMD', 'wget', '-O', '/dev/null', 'http://localhost:7474']
       interval: 10s
@@ -49,10 +54,10 @@ services:
       neo4j:
         condition: service_healthy
     environment:
-      - TZ=${TZ:-UTC}
+      - TZ=${TZ:-Asia/Shanghai}
       - NEO4J_URI=${NEO4J_URI:-bolt://neo4j:7687}
       - NEO4J_USER=${NEO4J_USER:-neo4j}
-      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-graphiti}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-graphiti123}
       - MCP_PORT=${MCP_PORT:-8082}
       - MANAGER_SERVER_PORT=${MANAGER_SERVER_PORT:-7072}
       - CRYPTO_SECRET=${CRYPTO_SECRET:-X@}XcfV]MKXbiP,i2k4wBZQbf7wot7et}
@@ -72,7 +77,7 @@ services:
       - LOG_SAVE_DAYS=${LOG_SAVE_DAYS:-7}
       - CLEAN_LOGS_AT_HOUR=${CLEAN_LOGS_AT_HOUR:-12}
     volumes:
-      - manager_db:/app/db
+      - /mnt/docker/graphiti-mcp/db:/app/db
     networks:
       - default
     ports:
@@ -80,23 +85,23 @@ services:
       - '${MANAGER_SERVER_PORT:-7072}:${MANAGER_SERVER_PORT:-7072}'
     restart: unless-stopped
 
-  # Graphiti Manager Frontend
-  manager-frontend:
-    build:
-      context: ./manager/frontend
-      args:
-        - VITE_MCP_PORT=${MCP_PORT:-8082}
-        - VITE_MANAGER_SERVER_PORT=${MANAGER_SERVER_PORT:-7072}
-        - VITE_MANAGER_SERVER_HOST=${MANAGER_SERVER_HOST:-}
-        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
-    pull_policy: never
-    image: graphiti-mcp-pro-frontend
-    container_name: graphiti-mcp-pro-frontend
-    environment:
-      # Caddy 运行时需要的环境变量
-      - VITE_MANAGER_SERVER_PORT=${MANAGER_SERVER_PORT:-7072}
-    networks:
-      - default
-    ports:
-      - '${MANAGER_CLIENT_PORT:-6062}:80'
-    restart: unless-stopped
+  # Graphiti Manager Frontend - 暂时注释掉避免构建问题
+  # manager-frontend:
+  #   build:
+  #     context: ./manager/frontend
+  #     args:
+  #       - VITE_MCP_PORT=${MCP_PORT:-8082}
+  #       - VITE_MANAGER_SERVER_PORT=${MANAGER_SERVER_PORT:-7072}
+  #       - VITE_MANAGER_SERVER_HOST=${MANAGER_SERVER_HOST:-}
+  #       - VITE_API_BASE_URL=${VITE_API_BASE_URL:-}
+  #   pull_policy: never
+  #   image: graphiti-mcp-pro-frontend
+  #   container_name: graphiti-mcp-pro-frontend
+  #   environment:
+  #     # Caddy 运行时需要的环境变量
+  #     - VITE_MANAGER_SERVER_PORT=${MANAGER_SERVER_PORT:-7072}
+  #   networks:
+  #     - default
+  #   ports:
+  #     - '${MANAGER_CLIENT_PORT:-6062}:80'
+  #   restart: unless-stopped
