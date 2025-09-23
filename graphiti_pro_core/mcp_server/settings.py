@@ -1,6 +1,7 @@
 """
 MCP Settings
 """
+import os
 from pydantic import Field, BaseModel
 from config import config_manager
 
@@ -16,7 +17,10 @@ class TaskSetting(BaseModel):
 task_setting: TaskSetting = TaskSetting()
 
 # Field(default="default", description="Default group ID for memory operations")
-default_group_id: str = "default"
+# Allow overriding via environment variable to provide a workspace- or deployment-level
+# default when callers omit group_id. This helps teams enforce a safer fallback such as
+# "global" to avoid polluting an ambiguous default bucket.
+default_group_id: str = os.getenv("DEFAULT_GROUP_ID", "default")
 
 # Field(default=True, description="Enable custom entity extraction")
 use_custom_entities: bool = True
